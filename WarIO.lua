@@ -4,35 +4,30 @@
 -- projects quite a bit to see how things were structured, and then 
 -- tried to implement it on my own.
 
-local BoxRadius = 4
+local BoxRadius = 3
 
 local PlayerX
 local PlayerY
+local Blocks
 
 function getPlayerLocation()
   PlayerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
   PlayerY = memory.readbyte(0x03B8)
 end
 
-function getBlocks()
-  local blocks = {}
-  
+function getBlocks(blocks)
   for i = 0, 16 do
     blocks[i] = {}
     for j = 0, 13 do -- 16 * 13 = 208
       local block = {}
-      -- Idk why there's a + 8 and - 16. I couldn't figure out why my
-      -- code wouldn't work until I saw those in the LuigI/O code.
-      local TempX = PlayerX + (i - 8) * 16
+      local TempX = PlayerX + (i) * 16
       local BlockX = math.floor((TempX % 256) / 16)
-      local BlockY = math.floor((PlayerY + (j - 6) * 13 - 48) / 16) -- -16 - 32 = -48
-      block.x = BlockX * 16
-      block.y = BlockY * 16
+      local BlockY = j * 16
       
       local BlockAddress = 0
-      if ((TempX / 256) % 2 == 1) then BlockAddress = 208 end
-      BlockAddress = 0x0500 + BlockAddress + BlockY * 16 + BlockX
-      if (memory.readbyte(BlockAddress) ~= 0 and BlockY < 13 and BlockY >= 0) then block.value = 1 
+      if (math.floor(TempX / 256) % 2 == 1) then BlockAddress = 208 end
+      BlockAddress = 0x0500 + BlockAddress + BlockY + BlockX
+      if (memory.readbyte(BlockAddress) ~= 0 and BlockY < 13 * 16 and BlockY >= 0) then block.value = 1 
       else block.value = 0 end
       
       blocks[i][j] = block
@@ -42,11 +37,34 @@ function getBlocks()
   return blocks
 end
 
-function displayBlocks(blocks)
+function getEnemies(blocks)
+  for i = 0, 5 do
+    if (memory.readbyte(0x00F + i) == 1) then
+      local enemy = {}
+      enemy.x = (memory.readbyte(0x0087 + i) + 256 * memory.readbyte(0x006E + i) - PlayerX)
+      
+      if (enemy.x >= 0 and enemy.x <= 256) then
+        enemy.x = math.floor(enemy.x % 256 / 16)
+        enemy.y = math.floor((memory.readbyte(0x00CF + i) - 8) / 16)
+        gui.text(0, i * 15 + 25, "Enemy coords: " .. enemy.x .. " " .. enemy.y)
+        enemy.value = 2
+        blocks[enemy.x + 1][enemy.y - 1] = enemy
+      end
+    end
+  end
+  
+  blocks.enemies = enemies
+  return blocks
+end
+
+function display(blocks)
   for i = 0, 16 do
     for j = 0, 13 do
       if (blocks[i][j].value == 1) then
-        gui.drawBox(blocks[i][j].x - BoxRadius, blocks[i][j].y - BoxRadius + 32, blocks[i][j].x + BoxRadius, blocks[i][j].y + BoxRadius + 32)
+        gui.drawBox(i * 2 * BoxRadius - BoxRadius, j * 2 * BoxRadius - BoxRadius + 32, i * 2 * BoxRadius + BoxRadius, j * 2 * BoxRadius + BoxRadius + 32, "white") 
+      end
+      if (blocks[i][j].value == 2) then
+        gui.drawBox(i * 2 * BoxRadius - BoxRadius, j * 2 * BoxRadius - BoxRadius + 32, i * 2 * BoxRadius + BoxRadius, j * 2 * BoxRadius + BoxRadius + 32, "red")
       end
     end
   end
@@ -54,8 +72,14 @@ end
 
 while true do
   memory.writebyte(0x075A, 2)
+  memory.writebyte(0x0787, 0x02)
   getPlayerLocation()
-  displayBlocks(getBlocks())
+  
+  local blocks = {}
+  blocks = getBlocks(blocks)
+  blocks = getEnemies(blocks)
+  display(blocks)
+  
   gui.text(0, 10, "Player Position: " .. PlayerX .. " " .. PlayerY)
   emu.frameadvance()
 end
