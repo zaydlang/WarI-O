@@ -8,7 +8,12 @@ local BoxRadius = 3
 
 local PlayerX
 local PlayerY
+local OldPlayerX
+local OldPlayerY
 local Blocks
+
+local CurrentSpecie = 0
+local StationaryFrames = 0
 
 function getPlayerLocation()
   PlayerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
@@ -125,6 +130,12 @@ function testSpecie(specie, blocks)
   buttons["P1 Start"]  = false
   buttons["P1 Select"] = false
   joypad.set(buttons)
+  
+  if (true) then
+    StationaryFrames = StationaryFrames + 1
+  else
+    StationaryFrames = 0
+  end
 end
 
 function sigmoid(x) 
@@ -160,9 +171,16 @@ function displayJoypad(joypad)
 end
 
 local genome = getRandomGenome(1)
-  
+
 while true do
-  memory.writebyte(0x075A, 2)
+  local IsAlive = (memory.readbyte(0x00E) ~= 0x0B)
+  local fitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
+  print(StationaryFrames)
+  if (IsAlive == false or StationaryFrames >= 180) then
+      CurrentSpecie = CurrentSpecie + 1
+      memory.writebyte(0x075A, 2)
+  end
+  
   --memory.writebyte(0x0787, 0x02)
   getPlayerLocation()
   
@@ -175,5 +193,6 @@ while true do
   displayJoypad(joypad.getimmediate())
   
   gui.text(0, 10, "Player Position: " .. PlayerX .. " " .. PlayerY)
+  gui.text(0, 25, "Fitness: " .. fitness)
   emu.frameadvance()
 end
