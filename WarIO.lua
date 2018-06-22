@@ -8,11 +8,10 @@ local BoxRadius = 3
 
 local PlayerX
 local PlayerY
-local OldPlayerX
-local OldPlayerY
+local OldPlayerFitness
 local Blocks
 
-local CurrentSpecie = 0
+local CurrentSpecie = 1
 local StationaryFrames = 0
 
 function getPlayerLocation()
@@ -91,7 +90,7 @@ function getRandomGenome(number)
     end
     specie.LayerTwo = NodesTwo
     
-    genome[i] = specie
+    genome[i + 1] = specie
   end
   
   return genome
@@ -131,11 +130,19 @@ function testSpecie(specie, blocks)
   buttons["P1 Select"] = false
   joypad.set(buttons)
   
-  if (true) then
+  -- Current Fitness
+  local fitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
+  if (OldPlayerFitness == fitness) then
     StationaryFrames = StationaryFrames + 1
+    if (StationaryFrames >= 180) then
+      memory.writebyte(0x00E, 0x0B) -- My way of killing Mario.
+    end
   else
     StationaryFrames = 0
   end
+  OldPlayerFitness = fitness
+  gui.text(0, 25, "Fitness: " .. fitness)
+  
 end
 
 function sigmoid(x) 
@@ -170,29 +177,66 @@ function displayJoypad(joypad)
   gui.drawText(240, 115, "R")
 end
 
-local genome = getRandomGenome(1)
+function compare(genomea, genomeb)
+    return genomea.fitness > genomeb.fitness
+end
 
+function newgenome(oldgenome)
+  local PercentToBreed = 0.5
+  local newgenome = {}
+  local i = 1
+  
+  table.sort(oldgenome, compare)
+  for i = 1, PercentToBreed * #oldgenome do
+    newgenome[i] = oldgenome[i]
+  end
+  
+  newgenome = breed(newgenome, #oldgenome)
+end
+
+function breed(newgenome, size)
+  local OldGenomeSize = #newgenome
+  
+  for i = #newgenome + 1, size do
+    local ParentA = math.floor(math.random() * OldGenomeSize) + 1
+    local ParentB = math.floor(math.random() * OldGenomeSize) + 1
+    
+    -- Layer One
+    for j = 0, #ParentA.LayerOne do
+    
+    end
+  end
+end
+
+-- Initialization
+local genome = getRandomGenome(10)
+OldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
+savestate.load("SMB.State")
+  
 while true do
   local IsAlive = (memory.readbyte(0x00E) ~= 0x0B)
-  local fitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
-  print(StationaryFrames)
-  if (IsAlive == false or StationaryFrames >= 180) then
-      CurrentSpecie = CurrentSpecie + 1
-      memory.writebyte(0x075A, 2)
+  if (IsAlive == false) then
+      savestate.load("SMB.State")
+      CurrentSpecie.fitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
+      if (CurrentSpecie == #genome) then
+        CurrentSpecie = CurrentSpecie + 1
+        StationaryFrames = 0
+      else
+        genome = newgenome(genome)
+        CurrentSpecie = 0
+      end
   end
   
   --memory.writebyte(0x0787, 0x02)
   getPlayerLocation()
-  
   local blocks = {}
   blocks = getBlocks(blocks)
   blocks = getEnemies(blocks)
-  testSpecie(genome[0], blocks)
+  testSpecie(genome[CurrentSpecie], blocks)
   
   display(blocks)
   displayJoypad(joypad.getimmediate())
   
   gui.text(0, 10, "Player Position: " .. PlayerX .. " " .. PlayerY)
-  gui.text(0, 25, "Fitness: " .. fitness)
   emu.frameadvance()
 end
