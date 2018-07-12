@@ -60,6 +60,21 @@ function getEnemies(blocks)
   return blocks
 end
 
+function saveGenome()
+  local filename = Generation .. ".gen"
+  local file = io.open(filename, "w")
+  for i = 1, 100 do
+    for j = 0, 16 do
+       for k = 0, 13 do
+          file:write(genome[i].LayerOne[j][k].WeightA .. "\n")
+          file:write(genome[i].LayerOne[j][k].WeightB .. "\n")
+          file:write(genome[i].LayerOne[j][k].out .. "\n")
+       end
+    end
+    file:write("-")
+  end
+end
+      
 function getRandomGenome(number)
   local genome = {}
   
@@ -265,6 +280,7 @@ while true do
         CurrentSpecie = CurrentSpecie + 1
         StationaryFrames = 0
       else
+        saveGenome()
         genome = newgenome(genome)
         Generation = Generation + 1
         CurrentSpecie = 1
