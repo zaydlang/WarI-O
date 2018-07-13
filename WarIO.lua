@@ -59,21 +59,6 @@ function getEnemies(blocks)
   blocks.enemies = enemies
   return blocks
 end
-
-function saveGenome()
-  local filename = Generation .. ".gen"
-  local file = io.open(filename, "w")
-  for i = 1, 100 do
-    for j = 0, 16 do
-       for k = 0, 13 do
-          file:write(genome[i].LayerOne[j][k].WeightA .. "\n")
-          file:write(genome[i].LayerOne[j][k].WeightB .. "\n")
-          file:write(genome[i].LayerOne[j][k].out .. "\n")
-       end
-    end
-    file:write("-")
-  end
-end
       
 function getRandomGenome(number)
   local genome = {}
@@ -264,12 +249,66 @@ function breed(newgenome, size)
   return newgenome
 end
 
+function loadGenome(number)
+  print("Loading File...")
+  local filename = "load.gen"
+  local file = io.open(filename, "r")
+  local genome = {}
+  
+  for i = 1, number do
+    local specie = {}
+    -- Creating Layer 1
+    local NodesOne = {}
+    for j = 0, 16 do
+      NodesOne[j] = {}
+      for k = 0, 13 do
+        NodesOne[j][k] = {}
+        NodesOne[j][k].WeightA = file:read("*number")
+        NodesOne[j][k].WeightB = file:read("*number")
+        NodesOne[j][k].out = file:read("*number")
+        NodesOne[j][k].value = 0
+      end
+    end
+    specie.LayerOne = NodesOne
+    
+    -- Creating Layer 2
+    local NodesTwo = {}
+    for i = 0, 6 do
+      NodesTwo[i] = {}
+      NodesTwo[i].value = 0
+      NodesTwo[i].NumberToAverage = 0
+    end
+    specie.LayerTwo = NodesTwo
+    
+    genome[i] = specie
+  end
+  file:close()
+  --]]
+  print("File Loaded.")
+  return genome
+end
+
 -- Initialization
-local genome = getRandomGenome(100)
+local genome = getRandomGenome(100) -- loadGenome() or getRandomGenome()
 local Generation = 1
 OldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
-  
+
+function saveGenome()
+  local filename = Generation .. ".gen"
+  local file = io.open(filename, "w")
+  for i = 1, 100 do
+    for j = 0, 16 do
+       for k = 0, 13 do
+          file:write(genome[i].LayerOne[j][k].WeightA .. "\n")
+          file:write(genome[i].LayerOne[j][k].WeightB .. "\n")
+          file:write(genome[i].LayerOne[j][k].out .. "\n")
+       end
+    end
+  end
+  file:close()
+end
+
 while true do
   local IsAlive = (memory.readbyte(0x00E) ~= 0x0B)
   if (memory.readbyte(0x00B5) > 1) then IsAlive = false end
@@ -280,7 +319,7 @@ while true do
         CurrentSpecie = CurrentSpecie + 1
         StationaryFrames = 0
       else
-        saveGenome()
+        saveGenome(Generation)
         genome = newgenome(genome)
         Generation = Generation + 1
         CurrentSpecie = 1
@@ -301,4 +340,4 @@ while true do
   emu.frameadvance()
 end
 
--- 5:18 PM Start Program
+-- 7:45 PM Start Program
