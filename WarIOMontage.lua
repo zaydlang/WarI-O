@@ -231,9 +231,9 @@ function breed(newgenome, size)
         
         newgenome[i].value = 0
         
-        if (math.random() < 0.04) then
-          newgenome[i].LayerOne[j][k].WeightA = newgenome[i].LayerOne[j][k].WeightA + ((math.random() * 0.4) - 0.2)
-          newgenome[i].LayerOne[j][k].WeightB = newgenome[i].LayerOne[j][k].WeightB + ((math.random() * 0.04) - 0.02)
+        if (math.random() < 0.01) then
+          newgenome[i].LayerOne[j][k].WeightA = newgenome[i].LayerOne[j][k].WeightA + ((math.random() * 0.3) - 0.15)
+          newgenome[i].LayerOne[j][k].WeightB = newgenome[i].LayerOne[j][k].WeightB + ((math.random() * 0.03) - 0.015)
         end
       end
     end
@@ -250,12 +250,12 @@ function breed(newgenome, size)
 end
 
 function loadGenome(number)
-  print("Loading File...")
-  local filename = "load.gen"
+  print("Loading File: " .. number .. ".gen")
+  local filename = number .. ".gen"
   local file = io.open(filename, "r")
   local genome = {}
   
-  for i = 1, number do
+  for i = 1, 100 do
     local specie = {}
     -- Creating Layer 1
     local NodesOne = {}
@@ -289,9 +289,8 @@ function loadGenome(number)
 end
 
 -- Initialization
-local genome = getRandomGenome(100) -- loadGenome() or getRandomGenome()
+local genome = loadGenome(1) -- loadGenome() or getRandomGenome()
 local Generation = 1
-local startTime = os.time()
 OldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
 
@@ -317,15 +316,10 @@ while true do
   
   if (IsAlive == false) then
       savestate.load("SMB.State")
-      if (CurrentSpecie ~= #genome) then
-        CurrentSpecie = CurrentSpecie + 1
-        StationaryFrames = 0
-      else
-        saveGenome(Generation)
-        genome = newgenome(genome)
-        Generation = Generation + 1
-        CurrentSpecie = 1
-      end
+      Generation = Generation + 1
+      genome = loadGenome(Generation)
+      CurrentSpecie = 1
+      StationaryFrames = 0
   end
   
   --memory.writebyte(0x0787, 0x02)
@@ -337,15 +331,8 @@ while true do
   display(blocks)
   displayJoypad(joypad.getimmediate())
   
-  local time = os.time() - startTime
-  local days    = math.floor(time / 86400)
-  local hours   = math.floor((time % 86400) / 3600)
-  local minutes = math.floor((time % 3600) / 60)
-  local seconds = math.floor((time % 60))
-  
   gui.text(0, 10, "Generation: " .. Generation)
   gui.text(0, 25, "Species: " .. CurrentSpecie)
-  gui.text(0, 65, "Runtime: " .. days .. ":" .. hours .. ":" .. minutes .. ":" .. seconds)
   emu.frameadvance()
 end
 
