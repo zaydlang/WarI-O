@@ -6,17 +6,19 @@
 
 local BoxRadius = 3
 
-local PlayerX
-local PlayerY
-local OldPlayerFitness
+local playerX
+local playerY
+local oldPlayerFitness
 local Blocks
 
 local CurrentSpecie = 1
-local StationaryFrames = 0
+local stationaryFrames = 0
+
+local speciesPerGenome = 100
 
 function getPlayerLocation()
-  PlayerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
-  PlayerY = memory.readbyte(0x03B8)
+  playerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
+  playerY = memory.readbyte(0x03B8)
 end
 
 function getBlocks(blocks)
@@ -24,7 +26,7 @@ function getBlocks(blocks)
     blocks[i] = {}
     for j = 0, 13 do -- 16 * 13 = 208
       local block = {}
-      local TempX = PlayerX + (i) * 16
+      local TempX = playerX + (i) * 16
       local BlockX = math.floor((TempX % 256) / 16)
       local BlockY = j * 16
       
@@ -45,7 +47,7 @@ function getEnemies(blocks)
   for i = 0, 5 do
     if (memory.readbyte(0x00F + i) == 1) then
       local enemy = {}
-      enemy.x = (memory.readbyte(0x0087 + i) + 256 * memory.readbyte(0x006E + i) - PlayerX)
+      enemy.x = (memory.readbyte(0x0087 + i) + 256 * memory.readbyte(0x006E + i) - playerX)
       
       if (enemy.x >= 0 and enemy.x <= 256) then
         enemy.x = math.floor(enemy.x % 256 / 16)
@@ -59,7 +61,7 @@ function getEnemies(blocks)
   blocks.enemies = enemies
   return blocks
 end
-      
+
 function getRandomGenome(number)
   local genome = {}
   
@@ -131,17 +133,22 @@ function testSpecie(specie, blocks)
   joypad.set(buttons)
   
   -- Current Fitness
-  local fitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D)
+  local fitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D)
+  local time = 0;
+  time = time + 100 * memory.readbyte(0x07F8)
+  time = time + 010 * memory.readbyte(0x07F9)
+  time = time + 001 * memory.readbyte(0x07FA)
+  local fitness = fitnessNoTime + 4 * time
   specie.fitness = fitness
-  if (OldPlayerFitness == fitness) then
-    StationaryFrames = StationaryFrames + 1
-    if (StationaryFrames >= 180) then
+  if (oldPlayerFitness == fitnessNoTime) then
+    stationaryFrames = stationaryFrames + 1
+    if (stationaryFrames >= 180) then
       memory.writebyte(0x00E, 0x0B) -- My way of killing Mario.
     end
   else
-    StationaryFrames = 0
+    stationaryFrames = 0
   end
-  OldPlayerFitness = fitness
+  oldPlayerFitness = fitnessNoTime
   gui.text(0, 40, "Fitness: " .. fitness)
 end
 
@@ -182,17 +189,17 @@ function compare(speciea, specieb)
 end
 
 function newgenome(oldgenome)
-  local PercentToBreed = 0.2
+  local percentToBreed = 0.2
   local newgenome = {}
   local i = 1
   
   table.sort(oldgenome, compare)
-  for i = 1, PercentToBreed * #oldgenome do
+  for i = 1, percentToBreed * #oldgenome do
     newgenome[i] = oldgenome[i]
   end
   
   newgenome = breed(newgenome, #oldgenome)
-  for i = 1, 20 do
+  for i = 1, speciesPerGenome * percentToBreed do
     print(newgenome[i].fitness)
   end
   return newgenome
@@ -289,17 +296,17 @@ function loadGenome(number)
 end
 
 -- Initialization
-local genome = getRandomGenome(100) -- loadGenome() or getRandomGenome()
+local genome = getRandomGenome(speciesPerGenome) -- loadGenome() or getRandomGenome()
 local Generation = 1
 local startTime = os.time()
-OldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
+oldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
 
 function saveGenome()
   local filename = Generation .. ".gen"
   local file = io.open(filename, "w")
   
-  for i = 1, 100 do
+  for i = 1, speciesPerGenome do
     for j = 0, 16 do
        for k = 0, 13 do
           file:write(genome[i].LayerOne[j][k].WeightA .. "\n")
@@ -319,7 +326,7 @@ while true do
       savestate.load("SMB.State")
       if (CurrentSpecie ~= #genome) then
         CurrentSpecie = CurrentSpecie + 1
-        StationaryFrames = 0
+        stationaryFrames = 0
       else
         saveGenome(Generation)
         genome = newgenome(genome)
