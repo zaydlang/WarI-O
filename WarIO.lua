@@ -215,6 +215,9 @@ function newGenome(oldGenome)
   for i = 1, speciesPerGenome * percentToBreed do
     print(newGenome[i].fitness)
   end
+
+  lastMean = mean
+
   return newGenome
 end
 
