@@ -1,20 +1,14 @@
--- Full Credit to MarI/O and LuigI/O for inspiration in this project.
--- This project is more of an attempt for me to learn more about AI
--- than anything else. So, I took a look at the two aforementioned
--- projects quite a bit to see how things were structured, and then 
--- tried to implement it on my own.
-
-local BoxRadius = 3
+local boxRadius = 3
 
 local playerX
 local playerY
 local oldPlayerFitness
-local Blocks
 
-local CurrentSpecie = 1
+local currentSpecie = 1
 local stationaryFrames = 0
 
-local speciesPerGenome = 100
+local generation = 1
+local speciesPerGenome = 50
 
 function getPlayerLocation()
   playerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
@@ -26,14 +20,14 @@ function getBlocks(blocks)
     blocks[i] = {}
     for j = 0, 13 do -- 16 * 13 = 208
       local block = {}
-      local TempX = playerX + (i) * 16
-      local BlockX = math.floor((TempX % 256) / 16)
-      local BlockY = j * 16
+      local tempX = playerX + (i) * 16
+      local blockX = math.floor((tempX % 256) / 16)
+      local blockY = j * 16
       
-      local BlockAddress = 0
-      if (math.floor(TempX / 256) % 2 == 1) then BlockAddress = 208 end
-      BlockAddress = 0x0500 + BlockAddress + BlockY + BlockX
-      if (memory.readbyte(BlockAddress) ~= 0 and BlockY < 13 * 16 and BlockY >= 0) then block.value = 10
+      local blockAddress = 0
+      if (math.floor(tempX / 256) % 2 == 1) then blockAddress = 208 end
+      blockAddress = 0x0500 + blockAddress + blockY + blockX
+      if (memory.readbyte(blockAddress) ~= 0 and blockY < 13 * 16 and blockY >= 0) then block.value = 10
       else block.value = 0 end
       
       blocks[i][j] = block
@@ -69,27 +63,27 @@ function getRandomGenome(number)
     local specie = {}
     
     -- Creating Layer 1
-    local NodesOne = {}
+    local nodes1 = {}
     for j = 0, 16 do
-      NodesOne[j] = {}
+      nodes1[j] = {}
       for k = 0, 13 do
-        NodesOne[j][k] = {}
-        NodesOne[j][k].WeightA = math.random() - 0.5
-        NodesOne[j][k].WeightB = math.random() * 0.1
-        NodesOne[j][k].out = math.floor(math.random(6))
-        NodesOne[j][k].value = 0
+        nodes1[j][k] = {}
+        nodes1[j][k].weightA = math.random() - 0.5
+        nodes1[j][k].weightB = math.random() * 0.1
+        nodes1[j][k].out = math.floor(math.random(6))
+        nodes1[j][k].value = 0
       end
     end
-    specie.LayerOne = NodesOne
+    specie.layer1 = nodes1
     
     -- Creating Layer 2
-    local NodesTwo = {}
+    local nodes2 = {}
     for i = 0, 6 do
-      NodesTwo[i] = {}
-      NodesTwo[i].value = 0
-      NodesTwo[i].NumberToAverage = 0
+      nodes2[i] = {}
+      nodes2[i].value = 0
+      nodes2[i].numberToAverage = 0
     end
-    specie.LayerTwo = NodesTwo
+    specie.layer2 = nodes2
     
     genome[i] = specie
   end
@@ -99,35 +93,35 @@ end
 
 function testSpecie(specie, blocks)
   -- First Layer
-  local NodesOne = specie.LayerOne
+  local nodes1 = specie.layer1
   for i = 0, 16 do
     for j = 0, 13 do
-      NodesOne[i][j].value = sigmoid(NodesOne[i][j].WeightA * blocks[i][j].value + NodesOne[i][j].WeightB)
+      nodes1[i][j].value = sigmoid(nodes1[i][j].weightA * blocks[i][j].value + nodes1[i][j].weightB)
     end
   end
   
   -- Second Layer
-  local NodesTwo = specie.LayerTwo
+  local nodes2 = specie.layer2
   for i = 0, 16 do
     for j = 0, 13 do
-      NodesTwo[NodesOne[i][j].out].value = NodesTwo[NodesOne[i][j].out].value + NodesOne[i][j].value
-      NodesTwo[NodesOne[i][j].out].NumberToAverage = NodesTwo[NodesOne[i][j].out].NumberToAverage + 1
+      nodes2[nodes1[i][j].out].value = nodes2[nodes1[i][j].out].value + nodes1[i][j].value
+      nodes2[nodes1[i][j].out].numberToAverage = nodes2[nodes1[i][j].out].numberToAverage + 1
     end
   end
   for i = 0, 6 do
-    NodesTwo[i].value = NodesTwo[i].value / NodesTwo[i].NumberToAverage
-    NodesTwo[i].NumberToAverage = 0
+    nodes2[i].value = nodes2[i].value / nodes2[i].numberToAverage
+    nodes2[i].numberToAverage = 0
   end
   
   -- Sending Input
   
   local buttons = {}
-  buttons["P1 A"]      = NodesTwo[1].value > 0.5
-  buttons["P1 B"]      = NodesTwo[2].value > 0.5
-  buttons["P1 Up"]     = NodesTwo[3].value > 0.5
-  buttons["P1 Down"]   = NodesTwo[4].value > 0.5
-  buttons["P1 Left"]   = NodesTwo[5].value > 0.5
-  buttons["P1 Right"]  = NodesTwo[6].value > 0.5
+  buttons["P1 A"]      = nodes2[1].value > 0.5
+  buttons["P1 B"]      = nodes2[2].value > 0.5
+  buttons["P1 Up"]     = nodes2[3].value > 0.5
+  buttons["P1 Down"]   = nodes2[4].value > 0.5
+  buttons["P1 Left"]   = nodes2[5].value > 0.5
+  buttons["P1 Right"]  = nodes2[6].value > 0.5
   buttons["P1 Start"]  = false
   buttons["P1 Select"] = false
   joypad.set(buttons)
@@ -142,7 +136,7 @@ function testSpecie(specie, blocks)
   specie.fitness = fitness
   if (oldPlayerFitness == fitnessNoTime) then
     stationaryFrames = stationaryFrames + 1
-    if (stationaryFrames >= 180) then
+    if (stationaryFrames >= 90) then
       memory.writebyte(0x00E, 0x0B) -- My way of killing Mario.
     end
   else
@@ -160,10 +154,10 @@ function display(blocks)
   for i = 0, 16 do
     for j = 0, 13 do
       if (blocks[i][j].value == 10) then
-        gui.drawBox(i * 2 * BoxRadius - BoxRadius, j * 2 * BoxRadius - BoxRadius + 32, i * 2 * BoxRadius + BoxRadius, j * 2 * BoxRadius + BoxRadius + 32, "white") 
+        gui.drawBox(i * 2 * boxRadius - boxRadius, j * 2 * boxRadius - boxRadius + 32, i * 2 * boxRadius + boxRadius, j * 2 * boxRadius + boxRadius + 32, "white") 
       end
       if (blocks[i][j].value == -10) then
-        gui.drawBox(i * 2 * BoxRadius - BoxRadius, j * 2 * BoxRadius - BoxRadius + 32, i * 2 * BoxRadius + BoxRadius, j * 2 * BoxRadius + BoxRadius + 32, "red")
+        gui.drawBox(i * 2 * boxRadius - boxRadius, j * 2 * boxRadius - boxRadius + 32, i * 2 * boxRadius + boxRadius, j * 2 * boxRadius + boxRadius + 32, "red")
       end
     end
   end
@@ -184,76 +178,79 @@ function displayJoypad(joypad)
   gui.drawText(240, 115, "R")
 end
 
-function compare(speciea, specieb)
-    return speciea.fitness > specieb.fitness
+function compare(specie1, specie2)
+    return specie1.fitness > specie2.fitness
 end
 
-function newgenome(oldgenome)
-  local percentToBreed = 0.2
-  local newgenome = {}
-  local i = 1
-  
-  table.sort(oldgenome, compare)
-  for i = 1, percentToBreed * #oldgenome do
-    newgenome[i] = oldgenome[i]
+local percentToBreed = 0.2
+
+function newGenome(oldGenome)
+  local newGenome = {}
+
+  table.sort(oldGenome, compare)
+  for i = 1, percentToBreed * #oldGenome do
+    newGenome[i] = oldGenome[i]
   end
   
-  newgenome = breed(newgenome, #oldgenome)
+  newGenome = breed(newGenome, #oldGenome)
+  print("====================")
+  print("generation " .. generation)
+  print("====================")
   for i = 1, speciesPerGenome * percentToBreed do
-    print(newgenome[i].fitness)
+    print(newGenome[i].fitness)
   end
-  return newgenome
+  return newGenome
 end
 
-function breed(newgenome, size)
-  local OldGenomeSize = #newgenome
+function breed(newGenome, size)
+  local oldGenomeSize = #newGenome
   
-  for i = #newgenome + 1, size do
-    local ParentA = math.floor(math.random() * OldGenomeSize) + 1
-    local ParentB = math.floor(math.random() * OldGenomeSize) + 1
-    newgenome[i] = {}
-    newgenome[i].LayerOne = {}
-    newgenome[i].LayerTwo = {}
+  for i = #newGenome + 1, size do
+    local parentA = math.floor(math.random() * oldGenomeSize) + 1
+    local parentB = math.floor(math.random() * oldGenomeSize) + 1
+    newGenome[i] = {}
+    newGenome[i].layer1 = {}
+    newGenome[i].layer2 = {}
     
     -- Layer One
     for j = 0, 16 do
-      newgenome[i].LayerOne[j] = {}
+      newGenome[i].layer1[j] = {}
       
       for k = 0, 13 do
-        newgenome[i].LayerOne[j][k] = {}
+        newGenome[i].layer1[j][k] = {}
         
         if (math.random() > 0.5) then
-          newgenome[i].LayerOne[j][k].WeightA = newgenome[ParentA].LayerOne[j][k].WeightA
-          newgenome[i].LayerOne[j][k].WeightB = newgenome[ParentA].LayerOne[j][k].WeightB
+          newGenome[i].layer1[j][k].weightA = newGenome[parentA].layer1[j][k].weightA
+          newGenome[i].layer1[j][k].weightB = newGenome[parentA].layer1[j][k].weightB
         else
-          newgenome[i].LayerOne[j][k].WeightA = newgenome[ParentB].LayerOne[j][k].WeightA
-          newgenome[i].LayerOne[j][k].WeightB = newgenome[ParentB].LayerOne[j][k].WeightB
+          newGenome[i].layer1[j][k].weightA = newGenome[parentB].layer1[j][k].weightA
+          newGenome[i].layer1[j][k].weightB = newGenome[parentB].layer1[j][k].weightB
         end
         
         if (math.random() > 0.5) then
-          newgenome[i].LayerOne[j][k].out = newgenome[ParentA].LayerOne[j][k].out
+          newGenome[i].layer1[j][k].out = newGenome[parentA].layer1[j][k].out
         else
-          newgenome[i].LayerOne[j][k].out = newgenome[ParentB].LayerOne[j][k].out
+          newGenome[i].layer1[j][k].out = newGenome[parentB].layer1[j][k].out
         end
         
-        newgenome[i].value = 0
+        newGenome[i].value = 0
         
         if (math.random() < 0.04) then
-          newgenome[i].LayerOne[j][k].WeightA = newgenome[i].LayerOne[j][k].WeightA + ((math.random() * 0.4) - 0.2)
-          newgenome[i].LayerOne[j][k].WeightB = newgenome[i].LayerOne[j][k].WeightB + ((math.random() * 0.04) - 0.02)
+          newGenome[i].layer1[j][k].weightA = newGenome[i].layer1[j][k].weightA + ((math.random() * 0.4) - 0.2)
+          newGenome[i].layer1[j][k].weightB = newGenome[i].layer1[j][k].weightB + ((math.random() * 0.04) - 0.02)
         end
       end
     end
     
     -- Layer Two
     for j = 0, 6 do
-      newgenome[i].LayerTwo[j] = {}
-      newgenome[i].LayerTwo[j].value = 0
-      newgenome[i].LayerTwo[j].NumberToAverage = 0
+      newGenome[i].layer2[j] = {}
+      newGenome[i].layer2[j].value = 0
+      newGenome[i].layer2[j].numberToAverage = 0
     end
   end
   
-  return newgenome
+  return newGenome
 end
 
 function loadGenome(number)
@@ -265,27 +262,27 @@ function loadGenome(number)
   for i = 1, number do
     local specie = {}
     -- Creating Layer 1
-    local NodesOne = {}
+    local nodes1 = {}
     for j = 0, 16 do
-      NodesOne[j] = {}
+      nodes1[j] = {}
       for k = 0, 13 do
-        NodesOne[j][k] = {}
-        NodesOne[j][k].WeightA = file:read("*number")
-        NodesOne[j][k].WeightB = file:read("*number")
-        NodesOne[j][k].out = file:read("*number")
-        NodesOne[j][k].value = 0
+        nodes1[j][k] = {}
+        nodes1[j][k].weightA = file:read("*number")
+        nodes1[j][k].weightB = file:read("*number")
+        nodes1[j][k].out = file:read("*number")
+        nodes1[j][k].value = 0
       end
     end
-    specie.LayerOne = NodesOne
+    specie.layer1 = nodes1
     
     -- Creating Layer 2
-    local NodesTwo = {}
+    local nodes2 = {}
     for i = 0, 6 do
-      NodesTwo[i] = {}
-      NodesTwo[i].value = 0
-      NodesTwo[i].NumberToAverage = 0
+      nodes2[i] = {}
+      nodes2[i].value = 0
+      nodes2[i].numberToAverage = 0
     end
-    specie.LayerTwo = NodesTwo
+    specie.layer2 = nodes2
     
     genome[i] = specie
   end
@@ -297,21 +294,20 @@ end
 
 -- Initialization
 local genome = getRandomGenome(speciesPerGenome) -- loadGenome() or getRandomGenome()
-local Generation = 1
 local startTime = os.time()
 oldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
 
 function saveGenome()
-  local filename = Generation .. ".gen"
+  local filename = generation .. ".gen"
   local file = io.open(filename, "w")
   
   for i = 1, speciesPerGenome do
     for j = 0, 16 do
        for k = 0, 13 do
-          file:write(genome[i].LayerOne[j][k].WeightA .. "\n")
-          file:write(genome[i].LayerOne[j][k].WeightB .. "\n")
-          file:write(genome[i].LayerOne[j][k].out .. "\n")
+          file:write(genome[i].layer1[j][k].weightA .. "\n")
+          file:write(genome[i].layer1[j][k].weightB .. "\n")
+          file:write(genome[i].layer1[j][k].out .. "\n")
        end
     end
   end
@@ -324,23 +320,22 @@ while true do
   
   if (IsAlive == false) then
       savestate.load("SMB.State")
-      if (CurrentSpecie ~= #genome) then
-        CurrentSpecie = CurrentSpecie + 1
+      if (currentSpecie ~= #genome) then
+        currentSpecie = currentSpecie + 1
         stationaryFrames = 0
       else
-        saveGenome(Generation)
-        genome = newgenome(genome)
-        Generation = Generation + 1
-        CurrentSpecie = 1
+        saveGenome(generation)
+        genome = newGenome(genome)
+        generation = generation + 1
+        currentSpecie = 1
       end
   end
   
-  --memory.writebyte(0x0787, 0x02)
   getPlayerLocation()
   local blocks = {}
   blocks = getBlocks(blocks)
   blocks = getEnemies(blocks)
-  testSpecie(genome[CurrentSpecie], blocks)
+  testSpecie(genome[currentSpecie], blocks)
   display(blocks)
   displayJoypad(joypad.getimmediate())
   
@@ -350,10 +345,8 @@ while true do
   local minutes = math.floor((time % 3600) / 60)
   local seconds = math.floor((time % 60))
   
-  gui.text(0, 10, "Generation: " .. Generation)
-  gui.text(0, 25, "Species: " .. CurrentSpecie)
-  gui.text(0, 65, "Runtime: " .. days .. ":" .. hours .. ":" .. minutes .. ":" .. seconds)
+  gui.text(0, 10, "Generation: " .. generation)
+  gui.text(0, 25, "Species: " .. currentSpecie)
+  gui.text(0, 65, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
   emu.frameadvance()
 end
-
--- 7:45 PM Start Program
