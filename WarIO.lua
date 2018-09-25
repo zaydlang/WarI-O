@@ -183,18 +183,34 @@ function compare(specie1, specie2)
 end
 
 local percentToBreed = 0.2
+local baseMutationRate = 0.04
+local mutationRate = baseMutationRate
+local lastMean = 0
 
 function newGenome(oldGenome)
   local newGenome = {}
+  local numberToBreed = percentToBreed * #oldGenome
 
   table.sort(oldGenome, compare)
-  for i = 1, percentToBreed * #oldGenome do
+  local mean = 0;
+  for i = 1, numberToBreed do
     newGenome[i] = oldGenome[i]
+    mean = mean + newGenome[i].fitness
+  end
+
+  mean = mean / numberToBreed
+  mean = math.floor(mean + 0.5)
+
+  if (mean == lastMean) then
+    mutationRate = mutationRate * 1.5
+  else
+    mutationRate = baseMutationRate
   end
   
   newGenome = breed(newGenome, #oldGenome)
   print("====================")
   print("generation " .. generation)
+  print("mean = " .. mean)
   print("====================")
   for i = 1, speciesPerGenome * percentToBreed do
     print(newGenome[i].fitness)
@@ -235,7 +251,7 @@ function breed(newGenome, size)
         
         newGenome[i].value = 0
         
-        if (math.random() < 0.04) then
+        if (math.random() < mutationRate) then
           newGenome[i].layer1[j][k].weightA = newGenome[i].layer1[j][k].weightA + ((math.random() * 0.4) - 0.2)
           newGenome[i].layer1[j][k].weightB = newGenome[i].layer1[j][k].weightB + ((math.random() * 0.04) - 0.02)
         end
@@ -346,7 +362,7 @@ while true do
   local seconds = math.floor((time % 60))
   
   gui.text(0, 10, "Generation: " .. generation)
-  gui.text(0, 25, "Species: " .. currentSpecie)
+  gui.text(0, 25, "Species: " .. currentSpecie .. "/" .. speciesPerGenome)
   gui.text(0, 65, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
   emu.frameadvance()
 end
