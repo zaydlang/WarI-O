@@ -2,7 +2,7 @@ local boxRadius = 3
 
 local playerX
 local playerY
-local oldPlayerFitness
+local oldFitnessNoTime
 
 local currentSpecie = 1
 local stationaryFrames = 0
@@ -91,6 +91,8 @@ function getRandomGenome(number)
   return genome
 end
 
+local currentBestFitness = 0
+
 function testSpecie(specie, blocks)
   -- First Layer
   local nodes1 = specie.layer1
@@ -113,8 +115,6 @@ function testSpecie(specie, blocks)
     nodes2[i].numberToAverage = 0
   end
   
-  -- Sending Input
-  
   local buttons = {}
   buttons["P1 A"]      = nodes2[1].value > 0.5
   buttons["P1 B"]      = nodes2[2].value > 0.5
@@ -126,23 +126,24 @@ function testSpecie(specie, blocks)
   buttons["P1 Select"] = false
   joypad.set(buttons)
   
-  -- Current Fitness
-  local fitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D)
+  local currentFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D)
   local time = 0;
   time = time + 100 * memory.readbyte(0x07F8)
   time = time + 010 * memory.readbyte(0x07F9)
   time = time + 001 * memory.readbyte(0x07FA)
-  local fitness = fitnessNoTime + 4 * time
-  specie.fitness = fitness
-  if (oldPlayerFitness == fitnessNoTime) then
+  local currentFitness = currentFitnessNoTime + 4 * time
+  currentBestFitness = math.max(currentFitness, currentBestFitness)
+  specie.fitness = (currentFitness + currentBestFitness) / 2
+  if (oldFitnessNoTime == currentFitnessNoTime) then
     stationaryFrames = stationaryFrames + 1
     if (stationaryFrames >= 90) then
-      memory.writebyte(0x00E, 0x0B) -- My way of killing Mario.
+      memory.writebyte(0x00E, 0x0B) -- kill Mario
     end
   else
     stationaryFrames = 0
   end
-  oldPlayerFitness = fitnessNoTime
+  oldFitnessNoTime = currentFitnessNoTime
+  currentBestFitness = 0
   gui.text(0, 40, "Fitness: " .. fitness)
 end
 
@@ -314,7 +315,7 @@ end
 -- Initialization
 local genome = getRandomGenome(speciesPerGenome) -- loadGenome() or getRandomGenome()
 local startTime = os.time()
-oldPlayerFitness = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
+oldFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
 
 function saveGenome()
