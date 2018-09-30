@@ -228,10 +228,21 @@ function newGenome(oldGenome)
         mutationRate = baseMutationRate
     end
 
+    local deltaMean = mean - lastMean
+    if (deltaMean > 0) then
+        deltaMean = "+" .. deltaMean
+    else if (deltaMean == 0) then
+        deltaMean = "-"
+    end
+
     newGenome = breed(newGenome, #oldGenome)
     print("====================")
     print("generation " .. generation)
-    print("mean = " .. mean)
+    if (generation == 1) then
+        printf("mean = " .. mean)
+    else
+        print("mean = " .. mean .. " (" .. deltaMean .. ")")
+    end
     print("====================")
     for i = 1, speciesPerGenome * percentToBreed do
         print(newGenome[i].fitness)
