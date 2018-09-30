@@ -1,2 +1,2 @@
 # WarI-O-Attempt
-Basically my attempt at MarI/O by Sethbling and the edited version LuigI/O by Akisame.
+A genetic algorithm to play Super Mario Bros, inspired by SethBling's MarI/O project
