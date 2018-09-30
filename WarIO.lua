@@ -2,7 +2,6 @@ local boxRadius = 3
 
 local playerX
 local playerY
-local oldFitnessNoTime
 
 local currentSpecie = 1
 local stationaryFrames = 0
@@ -25,10 +24,14 @@ function getBlocks(blocks)
             local blockY = j * 16
 
             local blockAddress = 0
-            if (math.floor(tempX / 256) % 2 == 1) then blockAddress = 208 end
+            if (math.floor(tempX / 256) % 2 == 1) then
+                blockAddress = 208
+            end
             blockAddress = 0x0500 + blockAddress + blockY + blockX
-            if (memory.readbyte(blockAddress) ~= 0 and blockY < 13 * 16 and blockY >= 0) then block.value = 10
-            else block.value = 0
+            if (memory.readbyte(blockAddress) ~= 0 and blockY < 13 * 16 and blockY >= 0) then
+                block.value = 10
+            else
+                block.value = 0
             end
 
             blocks[i][j] = block
@@ -63,7 +66,7 @@ function getRandomGenome(number)
     for i = 1, number do
         local specie = {}
 
-        -- Creating Layer 1
+        -- creating layer 1
         local nodes1 = {}
         for j = 0, 16 do
             nodes1[j] = {}
@@ -77,7 +80,7 @@ function getRandomGenome(number)
         end
         specie.layer1 = nodes1
 
-        -- Creating Layer 2
+        -- creating layer 2
         local nodes2 = {}
         for i = 0, 6 do
             nodes2[i] = {}
@@ -92,12 +95,14 @@ function getRandomGenome(number)
     return genome
 end
 
-local currentBestFitness = 0
-local totalPreviousFitness = 0
+local currentBestFitness
+local oldFitnessNoTime
+local totalPreviousFitness
 local finishedLevel = false
 
 function testSpecie(specie, blocks)
     currentBestFitness = 0
+    oldFitnessNoTime = 0
     totalPreviousFitness = 0
 
     -- First Layer
@@ -141,13 +146,13 @@ function testSpecie(specie, blocks)
     currentBestFitness = math.max(currentFitness, currentBestFitness)
     specie.fitness = (currentFitness + currentBestFitness) / 2
 
-    if (memory.readbyte(0x001D) == 0x03) then
+    if (memory.readbyte(0x001D) == 0x03 and not finishedLevel) then -- sliding down flagpole
         finishedLevel = true;
         totalPreviousFitness = currentFitness + 750
     end
 
     if (finishedLevel) then
-        if (memory.readbyte(0x0770) == 02) then
+        if (memory.readbyte(0x0770) == 02) then -- end of current world
             finishedLevel = false
         end
 
@@ -231,7 +236,7 @@ function newGenome(oldGenome)
     local deltaMean = mean - lastMean
     if (deltaMean > 0) then
         deltaMean = "+" .. deltaMean
-    else if (deltaMean == 0) then
+    elseif (deltaMean == 0) then
         deltaMean = "-"
     end
 
@@ -398,6 +403,7 @@ while true do
 
     gui.text(0, 10, "Generation: " .. generation)
     gui.text(0, 25, "Species: " .. currentSpecie .. "/" .. speciesPerGenome)
-    gui.text(0, 65, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
+    gui.text(0, 65, "Mutation Rate: " .. (mutationRate * 100) .. "%")
+    gui.text(0, 90, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
     emu.frameadvance()
 end
