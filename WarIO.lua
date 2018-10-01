@@ -230,7 +230,7 @@ function newGenome(oldGenome)
     mean = round(mean)
 
     if (mean == lastMean) then
-        mutationRate = mutationRate * 1.5
+        mutationRate = math.min(mutationRate + 0.01, 0.1)
     else
         mutationRate = baseMutationRate
     end
