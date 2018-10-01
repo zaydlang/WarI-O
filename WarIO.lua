@@ -9,7 +9,7 @@ local stationaryFrames = 0
 local generation = 1
 local speciesPerGenome = 50
 
-function getPlayerLocation()
+function updatePlayerLocation()
     playerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
     playerY = memory.readbyte(0x03B8)
 end
@@ -166,7 +166,7 @@ function testSpecie(specie, blocks)
 
     oldFitnessNoTime = currentFitnessNoTime
 
-    gui.text(0, 40, "Fitness: " .. currentFitness)
+    gui.text(0, 40, "Fitness: " .. specie.fitness)
 end
 
 function sigmoid(x)
@@ -219,6 +219,7 @@ function newGenome(oldGenome)
     local numberToBreed = percentToBreed * #oldGenome
 
     table.sort(oldGenome, compare)
+
     local mean = 0
     for i = 1, numberToBreed do
         newGenome[i] = oldGenome[i]
@@ -250,7 +251,7 @@ function newGenome(oldGenome)
         print("mean = " .. mean .. " (" .. deltaMean .. ")")
     end
     print("====================")
-    for i = 1, speciesPerGenome * percentToBreed do
+    for i = 1, numberToBreed do
         print(newGenome[i].fitness)
     end
 
@@ -342,6 +343,7 @@ function loadGenome(number)
         specie.layer2 = nodes2
 
         genome[i] = specie
+        line:read("*line")
     end
     file:close()
     --]]
@@ -374,13 +376,16 @@ function saveGenome()
                 file:write(genome[i].layer1[j][k].out .. "\n")
             end
         end
+        file:write("====================")
     end
     file:close()
 end
 
 while true do
     local IsAlive = (memory.readbyte(0x00E) ~= 0x0B)
-    if (memory.readbyte(0x00B5) > 1) then IsAlive = false end
+    if (memory.readbyte(0x00B5) > 1) then
+        IsAlive = false
+    end
 
     if (IsAlive == false) then
         savestate.load("SMB.State")
@@ -396,7 +401,7 @@ while true do
         end
     end
 
-    getPlayerLocation()
+    updatePlayerLocation()
     local blocks = {}
     blocks = getBlocks(blocks)
     blocks = getEnemies(blocks)
