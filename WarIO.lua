@@ -135,15 +135,15 @@ function testSpecie(specie, blocks)
 
     local currentFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D) + totalPreviousFitness
     currentBestFitnessNoTime = math.max(currentFitnessNoTime, currentBestFitnessNoTime)
-    local time = 0;
+    local time = 0
     time = time + 100 * memory.readbyte(0x07F8)
     time = time + 010 * memory.readbyte(0x07F9)
     time = time + 001 * memory.readbyte(0x07FA)
     local currentFitness = ((currentFitnessNoTime + currentBestFitnessNoTime) / 2) + (4 * time)
-    specie.fitness = currentFitness
+    specie.fitness = round(currentFitness)
 
     if (memory.readbyte(0x001D) == 0x03 and not finishedLevel) then -- sliding down flagpole
-        finishedLevel = true;
+        finishedLevel = true
         totalPreviousFitness = currentFitness + 750
     end
 
@@ -154,9 +154,6 @@ function testSpecie(specie, blocks)
 
         return
     end
-
-    gui.text(0, 150, "old " .. oldFitnessNoTime)
-    gui.text(0, 165, "new " .. currentFitnessNoTime)
 
     if (oldFitnessNoTime == currentFitnessNoTime) then
         stationaryFrames = stationaryFrames + 1
@@ -174,6 +171,10 @@ end
 
 function sigmoid(x)
     return 1 / (1 + math.exp(-1 * x))
+end
+
+function round(x)
+    return math.floor(x + 0.5)
 end
 
 function display(blocks)
@@ -218,14 +219,14 @@ function newGenome(oldGenome)
     local numberToBreed = percentToBreed * #oldGenome
 
     table.sort(oldGenome, compare)
-    local mean = 0;
+    local mean = 0
     for i = 1, numberToBreed do
         newGenome[i] = oldGenome[i]
         mean = mean + newGenome[i].fitness
     end
 
     mean = mean / numberToBreed
-    mean = math.floor(mean + 0.5)
+    mean = round(mean)
 
     if (mean == lastMean) then
         mutationRate = mutationRate * 1.5
@@ -244,7 +245,7 @@ function newGenome(oldGenome)
     print("====================")
     print("generation " .. generation)
     if (generation == 1) then
-        printf("mean = " .. mean)
+        print("mean = " .. mean)
     else
         print("mean = " .. mean .. " (" .. deltaMean .. ")")
     end
