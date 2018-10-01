@@ -95,16 +95,12 @@ function getRandomGenome(number)
     return genome
 end
 
-local currentBestFitness
+local currentBestFitnessNoTime
 local oldFitnessNoTime
 local totalPreviousFitness
 local finishedLevel = false
 
 function testSpecie(specie, blocks)
-    currentBestFitness = 0
-    oldFitnessNoTime = 0
-    totalPreviousFitness = 0
-
     -- First Layer
     local nodes1 = specie.layer1
     for i = 0, 16 do
@@ -137,14 +133,14 @@ function testSpecie(specie, blocks)
     buttons["P1 Select"] = false
     joypad.set(buttons)
 
-    local currentFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D)
+    local currentFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D) + totalPreviousFitness
+    currentBestFitnessNoTime = math.max(currentFitnessNoTime, currentBestFitnessNoTime)
     local time = 0;
     time = time + 100 * memory.readbyte(0x07F8)
     time = time + 010 * memory.readbyte(0x07F9)
     time = time + 001 * memory.readbyte(0x07FA)
-    local currentFitness = currentFitnessNoTime + 4 * time + totalPreviousFitness
-    currentBestFitness = math.max(currentFitness, currentBestFitness)
-    specie.fitness = (currentFitness + currentBestFitness) / 2
+    local currentFitness = ((currentFitnessNoTime + currentBestFitnessNoTime) / 2) + (4 * time)
+    specie.fitness = currentFitness
 
     if (memory.readbyte(0x001D) == 0x03 and not finishedLevel) then -- sliding down flagpole
         finishedLevel = true;
@@ -159,6 +155,9 @@ function testSpecie(specie, blocks)
         return
     end
 
+    gui.text(0, 150, "old " .. oldFitnessNoTime)
+    gui.text(0, 165, "new " .. currentFitnessNoTime)
+
     if (oldFitnessNoTime == currentFitnessNoTime) then
         stationaryFrames = stationaryFrames + 1
         if (stationaryFrames >= 90) then
@@ -169,7 +168,8 @@ function testSpecie(specie, blocks)
     end
 
     oldFitnessNoTime = currentFitnessNoTime
-    gui.text(0, 40, "Fitness: " .. fitness)
+
+    gui.text(0, 40, "Fitness: " .. currentFitness)
 end
 
 function sigmoid(x)
@@ -348,11 +348,18 @@ function loadGenome(number)
     return genome
 end
 
+function resetVariables()
+    currentBestFitnessNoTime = 0
+    oldFitnessNoTime = 0
+    totalPreviousFitness = 0
+end
+
 -- Initialization
 local genome = getRandomGenome(speciesPerGenome) -- loadGenome() or getRandomGenome()
 local startTime = os.time()
 oldFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
+resetVariables()
 
 function saveGenome()
     local filename = generation .. ".gen"
@@ -376,6 +383,7 @@ while true do
 
     if (IsAlive == false) then
         savestate.load("SMB.State")
+        resetVariables()
         if (currentSpecie ~= #genome) then
             currentSpecie = currentSpecie + 1
             stationaryFrames = 0
