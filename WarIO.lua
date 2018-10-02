@@ -3,11 +3,11 @@ local boxRadius = 3
 local playerX
 local playerY
 
-local currentSpecie = 1
+local currentSpecieNumber = 1
 local stationaryFrames = 0
 
 local generation = 1
-local speciesPerGenome = 50
+local speciesPerGenome = 25
 
 local charset = {}  do -- [0-9a-zA-Z]
     for c = 48, 57  do table.insert(charset, string.char(c)) end
@@ -112,7 +112,6 @@ function getRandomGenome(number)
     return genome
 end
 
-local currentBestFitnessNoTime
 local oldFitnessNoTime
 local totalPreviousFitness
 local finishedLevel = false
@@ -151,12 +150,11 @@ function testSpecie(specie, blocks)
     joypad.set(buttons)
 
     local currentFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x006D) + totalPreviousFitness
-    currentBestFitnessNoTime = math.max(currentFitnessNoTime, currentBestFitnessNoTime)
     local time = 0
     time = time + 100 * memory.readbyte(0x07F8)
     time = time + 010 * memory.readbyte(0x07F9)
     time = time + 001 * memory.readbyte(0x07FA)
-    local currentFitness = ((currentFitnessNoTime + currentBestFitnessNoTime) / 2) + (4 * time)
+    local currentFitness = currentFitnessNoTime + 4 * time
     specie.fitness = round(currentFitness)
 
     if (memory.readbyte(0x001D) == 0x03 and not finishedLevel) then -- sliding down flagpole
@@ -231,20 +229,19 @@ local baseMutationRate = 0.04
 local mutationRate = baseMutationRate
 local lastMean = 0
 
-function newGenome(oldGenome)
-    local newGenome = {}
-    local numberToBreed = percentToBreed * #oldGenome
+local numberToBreed = round(percentToBreed * speciesPerGenome)
 
+local previousBestIDs = {}
+
+function newGenome(oldGenome)
     table.sort(oldGenome, compare)
 
     local mean = 0
     for i = 1, numberToBreed do
-        newGenome[i] = oldGenome[i]
-        mean = mean + newGenome[i].fitness
+        mean = mean + oldGenome[i].fitness
     end
 
-    mean = mean / numberToBreed
-    mean = round(mean)
+    mean = round(mean / numberToBreed)
 
     if (mean == lastMean) then
         mutationRate = math.min(mutationRate + 0.01, 0.1)
@@ -259,7 +256,7 @@ function newGenome(oldGenome)
         deltaMean = "-"
     end
 
-    newGenome = breed(newGenome, #oldGenome)
+    local newGenome = breed(oldGenome)
     print("====================")
     print("generation " .. generation)
     if (generation == 1) then
@@ -269,7 +266,15 @@ function newGenome(oldGenome)
     end
     print("====================")
     for i = 1, numberToBreed do
-        print(newGenome[i].fitness .. " | " .. newGenome[i].id)
+        local suffix = ""
+        if (newGenome[i].previousBest) then
+            suffix = " *"
+        end
+        print(newGenome[i].fitness .. " | " .. newGenome[i].id .. suffix)
+    end
+
+    for i = 1, numberToBreed do
+        newGenome[i].previousBest = true
     end
 
     lastMean = mean
@@ -277,12 +282,11 @@ function newGenome(oldGenome)
     return newGenome
 end
 
-function breed(newGenome, size)
-    local oldGenomeSize = #newGenome
-
-    for i = #newGenome + 1, size do
-        local parentA = math.floor(math.random() * oldGenomeSize) + 1
-        local parentB = math.floor(math.random() * oldGenomeSize) + 1
+function breed(oldGenome)
+    local newGenome = {unpack(oldGenome) }
+    for i = numberToBreed + 1, speciesPerGenome do
+        local parentA = newGenome[math.floor(math.random() * numberToBreed) + 1]
+        local parentB = newGenome[math.floor(math.random() * numberToBreed) + 1]
         newGenome[i] = {}
         newGenome[i].layer1 = {}
         newGenome[i].layer2 = {}
@@ -295,17 +299,17 @@ function breed(newGenome, size)
                 newGenome[i].layer1[j][k] = {}
 
                 if (math.random() > 0.5) then
-                    newGenome[i].layer1[j][k].weightA = newGenome[parentA].layer1[j][k].weightA
-                    newGenome[i].layer1[j][k].weightB = newGenome[parentA].layer1[j][k].weightB
+                    newGenome[i].layer1[j][k].weightA = parentA.layer1[j][k].weightA
+                    newGenome[i].layer1[j][k].weightB = parentA.layer1[j][k].weightB
                 else
-                    newGenome[i].layer1[j][k].weightA = newGenome[parentB].layer1[j][k].weightA
-                    newGenome[i].layer1[j][k].weightB = newGenome[parentB].layer1[j][k].weightB
+                    newGenome[i].layer1[j][k].weightA = parentB.layer1[j][k].weightA
+                    newGenome[i].layer1[j][k].weightB = parentB.layer1[j][k].weightB
                 end
 
                 if (math.random() > 0.5) then
-                    newGenome[i].layer1[j][k].out = newGenome[parentA].layer1[j][k].out
+                    newGenome[i].layer1[j][k].out = parentA.layer1[j][k].out
                 else
-                    newGenome[i].layer1[j][k].out = newGenome[parentB].layer1[j][k].out
+                    newGenome[i].layer1[j][k].out = parentB.layer1[j][k].out
                 end
 
                 newGenome[i].value = 0
@@ -324,6 +328,7 @@ function breed(newGenome, size)
             newGenome[i].layer2[j].numberToAverage = 0
         end
 
+        newGenome[i].fitness = 0
         newGenome[i].id = generateId()
     end
 
@@ -331,6 +336,8 @@ function breed(newGenome, size)
 end
 
 function loadGenome(number)
+    -- TODO make this actually work
+
     print("Loading File...")
     local filename = "load.gen"
     local file = io.open(filename, "r")
@@ -371,7 +378,6 @@ function loadGenome(number)
 end
 
 function resetVariables()
-    currentBestFitnessNoTime = 0
     oldFitnessNoTime = 0
     totalPreviousFitness = 0
 end
@@ -383,11 +389,13 @@ oldFitnessNoTime = memory.readbyte(0x0086) + 256 * memory.readbyte(0x071A) - 40
 savestate.load("SMB.State")
 resetVariables()
 
-function saveGenome()
-    local filename = generation .. ".gen"
+function saveGenome(genome, filename)
     local file = io.open(filename, "w")
 
     for i = 1, speciesPerGenome do
+        file:write("====================\n")
+        file:write(genome[i].id .. "\n")
+        file:write("====================\n")
         for j = 0, 16 do
             for k = 0, 13 do
                 file:write(genome[i].layer1[j][k].weightA .. "\n")
@@ -395,7 +403,7 @@ function saveGenome()
                 file:write(genome[i].layer1[j][k].out .. "\n")
             end
         end
-        file:write("====================")
+        file:write("\n\n\n")
     end
     file:close()
 end
@@ -409,22 +417,24 @@ while true do
     if (IsAlive == false) then
         savestate.load("SMB.State")
         resetVariables()
-        if (currentSpecie ~= #genome) then
-            currentSpecie = currentSpecie + 1
+        if (currentSpecieNumber ~= #genome) then
+            currentSpecieNumber = currentSpecieNumber + 1
             stationaryFrames = 0
         else
-            saveGenome(generation)
+            saveGenome(genome, generation .. ".gen")
             genome = newGenome(genome)
             generation = generation + 1
-            currentSpecie = 1
+            currentSpecieNumber = 1
         end
     end
+
+    local currentSpecie = genome[currentSpecieNumber]
 
     updatePlayerLocation()
     local blocks = {}
     blocks = getBlocks(blocks)
     blocks = getEnemies(blocks)
-    testSpecie(genome[currentSpecie], blocks)
+    testSpecie(currentSpecie, blocks)
     display(blocks)
     displayJoypad(joypad.getimmediate())
 
@@ -434,8 +444,10 @@ while true do
     local minutes = math.floor((time % 3600) / 60)
     local seconds = math.floor((time % 60))
 
+    local specieTextDigits = math.ceil(math.log(speciesPerGenome) / math.log(10))
+
     gui.text(0, 10, "Generation: " .. generation)
-    gui.text(0, 25, "Species: " .. currentSpecie .. "/" .. speciesPerGenome)
+    gui.text(0, 25, "Species: " .. string.format("%0" .. specieTextDigits .. "d/", currentSpecieNumber) .. speciesPerGenome .. " (" .. currentSpecie.id .. ")")
     gui.text(0, 65, "Mutation Rate: " .. (mutationRate * 100) .. "%")
     gui.text(0, 90, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
     emu.frameadvance()
