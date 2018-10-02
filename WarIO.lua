@@ -7,7 +7,7 @@ local currentSpecieNumber = 1
 local stationaryFrames = 0
 
 local generation = 1
-local speciesPerGenome = 25
+local speciesPerGenome = 50
 
 local charset = {}  do -- [0-9a-zA-Z]
     for c = 48, 57  do table.insert(charset, string.char(c)) end
@@ -228,10 +228,9 @@ local percentToBreed = 0.2
 local baseMutationRate = 0.04
 local mutationRate = baseMutationRate
 local lastMean = 0
+local staleGenerations = 0
 
 local numberToBreed = round(percentToBreed * speciesPerGenome)
-
-local previousBestIDs = {}
 
 function newGenome(oldGenome)
     table.sort(oldGenome, compare)
@@ -245,8 +244,10 @@ function newGenome(oldGenome)
 
     if (mean == lastMean) then
         mutationRate = math.min(mutationRate + 0.01, 0.1)
+        staleGenerations = staleGenerations + 1
     else
         mutationRate = baseMutationRate
+        staleGenerations = 0
     end
 
     local deltaMean = mean - lastMean
@@ -266,18 +267,15 @@ function newGenome(oldGenome)
     end
     print("====================")
     for i = 1, numberToBreed do
-        local suffix = ""
-        if (newGenome[i].previousBest) then
-            suffix = " *"
-        end
-        print(newGenome[i].fitness .. " | " .. newGenome[i].id .. suffix)
-    end
-
-    for i = 1, numberToBreed do
-        newGenome[i].previousBest = true
+        print(oldGenome[i].fitness .. " | " .. oldGenome[i].id)
     end
 
     lastMean = mean
+
+    if (staleGenerations == 20) then
+        newGenome = getRandomGenome(speciesPerGenome)
+        staleGenerations = 0
+    end
 
     return newGenome
 end
@@ -449,6 +447,7 @@ while true do
     gui.text(0, 10, "Generation: " .. generation)
     gui.text(0, 25, "Species: " .. string.format("%0" .. specieTextDigits .. "d/", currentSpecieNumber) .. speciesPerGenome .. " (" .. currentSpecie.id .. ")")
     gui.text(0, 65, "Mutation Rate: " .. (mutationRate * 100) .. "%")
-    gui.text(0, 90, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
+    gui.text(0, 80, "Stale Generations: " .. staleGenerations)
+    gui.text(0, 105, string.format("Runtime: %02d:%02d:%02d:%02d", days, hours, minutes, seconds))
     emu.frameadvance()
 end
