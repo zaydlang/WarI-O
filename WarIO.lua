@@ -9,6 +9,21 @@ local stationaryFrames = 0
 local generation = 1
 local speciesPerGenome = 50
 
+local charset = {}  do -- [0-9a-zA-Z]
+    for c = 48, 57  do table.insert(charset, string.char(c)) end
+    for c = 65, 90  do table.insert(charset, string.char(c)) end
+    for c = 97, 122 do table.insert(charset, string.char(c)) end
+end
+
+function randomString(length)
+    if not length or length <= 0 then return '' end
+    return randomString(length - 1) .. charset[math.random(1, #charset)]
+end
+
+function generateId()
+    return randomString(5)
+end
+
 function updatePlayerLocation()
     playerX = memory.readbyte(0x071C) + 256 * memory.readbyte(0x071A)
     playerY = memory.readbyte(0x03B8)
@@ -88,6 +103,8 @@ function getRandomGenome(number)
             nodes2[i].numberToAverage = 0
         end
         specie.layer2 = nodes2
+
+        specie.id = generateId()
 
         genome[i] = specie
     end
@@ -252,7 +269,7 @@ function newGenome(oldGenome)
     end
     print("====================")
     for i = 1, numberToBreed do
-        print(newGenome[i].fitness)
+        print(newGenome[i].fitness .. " | " .. newGenome[i].id)
     end
 
     lastMean = mean
@@ -306,6 +323,8 @@ function breed(newGenome, size)
             newGenome[i].layer2[j].value = 0
             newGenome[i].layer2[j].numberToAverage = 0
         end
+
+        newGenome[i].id = generateId()
     end
 
     return newGenome
