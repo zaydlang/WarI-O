@@ -413,6 +413,17 @@ while true do
     end
 
     if (IsAlive == false) then
+        local buttons = {}
+        buttons["P1 A"] = false
+        buttons["P1 B"] = false
+        buttons["P1 Up"] = false
+        buttons["P1 Down"] = false
+        buttons["P1 Left"] = false
+        buttons["P1 Right"] = false
+        buttons["P1 Start"] = false
+        buttons["P1 Select"] = false
+        joypad.set(buttons)
+
         savestate.load("SMB.State")
         resetVariables()
         if (currentSpecieNumber ~= #genome) then
