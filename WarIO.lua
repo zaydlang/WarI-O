@@ -243,12 +243,12 @@ function newGenome(oldGenome)
     mean = round(mean / numberToBreed)
 
     if (mean <= lastMean) then
-        mutationRate = math.min(mutationRate + 0.01, 0.1)
         staleGenerations = staleGenerations + 1
     else
-        mutationRate = baseMutationRate
         staleGenerations = 0
     end
+
+    mutationRate = math.min(baseMutationRate + 0.01 * staleGenerations, 0.2)
 
     local deltaMean = mean - lastMean
     if (deltaMean > 0) then
