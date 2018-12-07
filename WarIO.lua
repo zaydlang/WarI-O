@@ -314,11 +314,12 @@ function breed(oldGenome)
                     newGenome[i].layer1[j][k].weightB = parentB.layer1[j][k].weightB
                 end
 
-                for j = 1, 6 do
+                newGenome[i].layer1[j][k].out = {}
+                for l = 1, 6 do
                   if (math.random() > 0.5) then
-                      newGenome[i].layer1[j][k].out[j] = parentA.layer1[j][k].out[j]
+                      newGenome[i].layer1[j][k].out[l] = parentA.layer1[j][k].out[l]
                   else
-                      newGenome[i].layer1[j][k].out[j] = parentB.layer1[j][k].out[j]
+                      newGenome[i].layer1[j][k].out[l] = parentB.layer1[j][k].out[l]
                   end
                 end
                 
@@ -410,12 +411,12 @@ function saveGenome(genome, filename)
             for k = 0, 13 do
                 file:write(genome[i].layer1[j][k].weightA .. "\n")
                 file:write(genome[i].layer1[j][k].weightB .. "\n")
-                file:write(genome[i].layer1[j][k].out[1] .. "\n")
-                file:write(genome[i].layer1[j][k].out[2] .. "\n")
-                file:write(genome[i].layer1[j][k].out[3] .. "\n")
-                file:write(genome[i].layer1[j][k].out[4] .. "\n")
-                file:write(genome[i].layer1[j][k].out[5] .. "\n")
-                file:write(genome[i].layer1[j][k].out[6] .. "\n")
+                file:write(genome[i].layer1[j][k].out[1] and "1" or "0" .. "\n")
+                file:write(genome[i].layer1[j][k].out[2] and "1" or "0" .. "\n")
+                file:write(genome[i].layer1[j][k].out[3] and "1" or "0" .. "\n")
+                file:write(genome[i].layer1[j][k].out[4] and "1" or "0" .. "\n")
+                file:write(genome[i].layer1[j][k].out[5] and "1" or "0" .. "\n")
+                file:write(genome[i].layer1[j][k].out[6] and "1" or "0" .. "\n")
             end
         end
         file:write("\n\n\n")
