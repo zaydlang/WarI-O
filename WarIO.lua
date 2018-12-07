@@ -90,12 +90,12 @@ function getRandomGenome(number)
                 nodes1[j][k].weightA = math.random() - 0.5
                 nodes1[j][k].weightB = math.random() * 0.1
                 nodes1[j][k].out = {}
-                nodes1[j][j].out[1] = true
-                nodes1[j][j].out[2] = true
-                nodes1[j][j].out[3] = true
-                nodes1[j][j].out[4] = true
-                nodes1[j][j].out[5] = true
-                nodes1[j][j].out[6] = true
+                nodes1[j][k].out[1] = true
+                nodes1[j][k].out[2] = true
+                nodes1[j][k].out[3] = true
+                nodes1[j][k].out[4] = true
+                nodes1[j][k].out[5] = true
+                nodes1[j][k].out[6] = true
                 nodes1[j][k].value = 0
             end
         end
@@ -136,9 +136,11 @@ function testSpecie(specie, blocks)
     for i = 0, 16 do
         for j = 0, 13 do
             for k = 1, 6 do
-              if (nodes2[nodes1[i][j]].out[k]) then
-                nodes2[nodes1[i][j].out[k]].value = nodes2[nodes1[i][j].out[k]].value + nodes1[i][j].value
-                nodes2[nodes1[i][j].out[k]].numberToAverage = nodes2[nodes1[i][j].out[k]].numberToAverage + 1
+              if (nodes1[i][j].out[k]) then
+                nodes2[k].value = nodes2[k].value + nodes1[i][j].value
+                nodes2[k].numberToAverage = nodes2[k].numberToAverage + 1
+              end
+            end
         end
     end
     for i = 0, 6 do
